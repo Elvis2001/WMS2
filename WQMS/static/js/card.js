@@ -9,6 +9,13 @@ function updateCardValues() {
         // Update Temperature Card
         document.getElementById('temperatureValue').textContent = data[data.length - 1].temperature + '°C';
 
+
+        // Update Turbidity Card
+        document.getElementById('turbidityValue').textContent = data[data.length - 1].turbidity + ' NTU';
+
+        // Update TDS Card
+        document.getElementById('tdsValue').textContent = data[data.length - 1].tds + ' ppm';
+
         // Update pH Card
         // Update the pH value on the card
         document.getElementById('phValu').textContent = data[data.length - 1].ph;

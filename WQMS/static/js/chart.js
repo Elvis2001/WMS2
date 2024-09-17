@@ -22,11 +22,6 @@ function updateRealtimeData() {
       chart1.data.datasets[1].data = Array(newData.length).fill(thresholdValue1); // Add threshold data
       chart1.update();
 
-      // Update Chart 2
-      //chart2.data.labels = newTimestamps;
-      //chart2.data.datasets[0].data = newData.map(entry => entry.ph);
-      //chart2.data.datasets[1].data = Array(newData.length).fill(thresholdValue2); // Add threshold data
-      //chart2.update();
 
       // Update Chart 3
       chart3.data.labels = newTimestamps;
@@ -39,6 +34,12 @@ function updateRealtimeData() {
       chart4.data.datasets[0].data = newData.map(entry => entry.tds);
       chart4.data.datasets[1].data = Array(newData.length).fill(thresholdValue4); // Add threshold data
       chart4.update();
+
+        // Update Chart 2
+      //chart2.data.labels = newTimestamps;
+      //chart2.data.datasets[0].data = newData.map(entry => entry.ph);
+      //chart2.data.datasets[1].data = Array(newData.length).fill(thresholdValue2); // Add threshold data
+      //chart2.update();
     })
     .catch(error => {
       console.error('Error fetching real-time data:', error);
