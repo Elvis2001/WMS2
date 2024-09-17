@@ -23,10 +23,10 @@ function updateRealtimeData() {
       chart1.update();
 
       // Update Chart 2
-      chart2.data.labels = newTimestamps;
-      chart2.data.datasets[0].data = newData.map(entry => entry.ph);
-      chart2.data.datasets[1].data = Array(newData.length).fill(thresholdValue2); // Add threshold data
-      chart2.update();
+      //chart2.data.labels = newTimestamps;
+      //chart2.data.datasets[0].data = newData.map(entry => entry.ph);
+      //chart2.data.datasets[1].data = Array(newData.length).fill(thresholdValue2); // Add threshold data
+      //chart2.update();
 
       // Update Chart 3
       chart3.data.labels = newTimestamps;

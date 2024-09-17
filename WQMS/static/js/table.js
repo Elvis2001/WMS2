@@ -20,7 +20,7 @@ function updateTableData() {
           newRow.innerHTML = `
             <td>${entry.timestamp}</td>
             <td>${entry.temperature}</td>
-            <td>${entry.ph}</td>
+            
             <td>${entry.tds}</td>
             <td>${entry.turbidity}</td>
           `;

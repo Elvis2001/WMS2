@@ -21,11 +21,7 @@ function checkDataAndShowAlerts(data, thresholdValues) {
     hideAlertForParameter();
   }
 
-  if (currentData.ph > thresholdValues.ph) {
-    showAlertForParameter('Water', currentData.ph);
-  } else if (lastShownAlertParameter === 'pH') {
-    hideAlertForParameter();
-  }
+  
 
   if (currentData.turbidity > thresholdValues.turbidity) {
     showAlertForParameter('Water', currentData.turbidity);
@@ -69,7 +65,7 @@ function fetchAndCheckData(thresholdValues) {
 
 const sampleThresholdValues = {
   temperature: 32,
-  ph: 8.6,
+  //ph: 8.6,
   turbidity: 900,
   tds: 350,
 };

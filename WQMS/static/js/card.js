@@ -10,7 +10,12 @@ function updateCardValues() {
         document.getElementById('temperatureValue').textContent = data[data.length - 1].temperature + '°C';
 
         // Update pH Card
-        document.getElementById('phValue').textContent = data[data.length - 1].ph;
+        // Update the pH value on the card
+        document.getElementById('phValu').textContent = data[data.length - 1].ph;
+
+        // Hide the card
+        document.getElementById('cardId').style.display = 'none';
+
 
         // Update Turbidity Card
         document.getElementById('turbidityValue').textContent = data[data.length - 1].turbidity + ' NTU';

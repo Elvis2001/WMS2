@@ -9,7 +9,7 @@ class SensorData(db.Model):
     temperature = db.Column(db.Float)
     tds = db.Column(db.Float)
     turbidity = db.Column(db.Float)
-    ph = db.Column(db.Float)
+   # ph = db.Column(db.Float)
 
     def __repr__(self):
         return f"Sensor data: '{self.timestamp}', '{self.temperature}', '{self.tds}', '{self.turbidity}', '{self.ph}'"
