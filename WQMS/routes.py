@@ -1,141 +1,188 @@
+import os
 import pandas as pd
-from flask import request, jsonify, render_template, url_for, Response
-from WQMS import app, db, mail
+import subprocess
+from flask import Blueprint, request, jsonify, render_template, Response, send_from_directory
+from WQMS import db, mail,app
 from WQMS.Model import SensorData
+from werkzeug.utils import secure_filename
 from flask_mail import Message
 from datetime import datetime
 
 
-# Define the email alert interval (12 hours)
-alert_interval = 43200  # 12 hours minutes in seconds
+
+alert_interval = 43200  # 12 hours in seconds
 last_alert_time = None
 
 thresholdValues = {
-    'temperature': 32,  # Set your temperature threshold value
-   # 'ph': 8.6,          # Set your pH threshold value
-    'turbidity': 900,    # Set your turbidity threshold value
-    'tds': 350          # Set your TDS threshold value
+    'temperature': 32,
+    'turbidity': 900,
+    'tds': 350
 }
-
-
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+    
+    if file and file.filename.endswith('.csv'):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join('WQMS/resource', filename)
+        file.save(filepath)
+        
+        # Process the file if needed
+        data = pd.read_csv(filepath)
+        
+        # Example: Saving data to database
+        for _, row in data.iterrows():
+            new_data = SensorData(sensor_value=row['value'])  # Adjust according to your CSV structure
+            db.session.add(new_data)
+        db.session.commit()
+        
+        return jsonify({'message': 'File successfully uploaded and processed'}), 200
+    else:
+        return jsonify({'message': 'Invalid file type'}), 400
+
+@app.route('/data/<filename>')
+def serve_data_file(filename):
+    # Use absolute path for data_folder
+    data_folder = os.path.abspath('WQMS/data')
+    file_path = os.path.join(data_folder, filename)
+    
+    # Debug: print to verify file path and existence
+    print(f"Looking for file at: {file_path}")
+    
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        print("File not found!")
+        return jsonify({'message': f'File {filename} could not be found.'}), 404
+    
+    print("File found, serving it now...")
+    
+    try:
+        # Serve the requested file
+        return send_from_directory(data_folder, filename)
+    except Exception as e:
+        print(f"Error serving file: {str(e)}")
+        return jsonify({'message': f'Error serving file: {str(e)}'}), 500
+    
 @app.route('/about')
 def about():
-    return render_template('About.html')
-
+    return render_template('about.html')
 
 @app.route('/table')
 def table():
     return render_template('table.html')
 
-
-#This route receives the data from the ESP-8266 module and saves in the database
 @app.route('/receive_data', methods=['POST'])
 def receive_data():
     try:
-        data = request.json  # Assuming the data sent is in JSON format
+        data = request.json
         print(data)
 
         sensor_data = SensorData(
             temperature=data.get('temperature'),
             tds=data.get('tds'),
-            turbidity=data.get('turbidity'),
-            #ph=data.get('ph')
+            turbidity=data.get('turbidity')
         )
 
         db.session.add(sensor_data)
         db.session.commit()
 
-
-        # Call the send_email_alert function
         send_email_alert(data, thresholdValues)
 
         return "Data received and saved successfully", 200
     except Exception as e:
         return str(e), 400
 
-# Function to send email alert
 def send_email_alert(data, thresholdValues):
     global last_alert_time
 
     current_time = datetime.now()
 
-    if (
-        not last_alert_time or
-        (current_time - last_alert_time).seconds >= alert_interval
-    ):
-        # Send an email alert
+    if not last_alert_time or (current_time - last_alert_time).seconds >= alert_interval:
         last_alert_time = current_time
-
-        # Create the email message
-        msg = Message('Sensor Data Alert', sender='monitoringwaterquality176@gmail.com', recipients=['davidetuonu15@gmail.com'])  # Replace with your recipient's email
-        current_data = data
+        msg = Message('Sensor Data Alert', sender='okloelvito@gmail.com', recipients=['oklosamuel50@gmail.com'])
         alert_message = ''
 
-        if current_data['temperature'] > thresholdValues['temperature']:
+        if data.get('temperature') > thresholdValues['temperature']:
             alert_message += 'Temperature value exceeded the threshold.\n'
 
-       # if current_data['ph'] > thresholdValues['ph']:
-         #   alert_message += 'pH value exceeded the threshold.\n'
-
-        if current_data['turbidity'] > thresholdValues['turbidity']:
+        if data.get('turbidity') > thresholdValues['turbidity']:
             alert_message += 'Turbidity value exceeded the threshold.\n'
 
-        if current_data['tds'] > thresholdValues['tds']:
+        if data.get('tds') > thresholdValues['tds']:
             alert_message += 'TDS value exceeded the threshold.\n'
 
         if alert_message:
             msg.body = alert_message
             mail.send(msg)
 
-#This route sends the data to the front end
 @app.route('/send_data', methods=['GET'])
 def get_data():
     try:
         data = SensorData.query.all()
-        data_list = []
-
-        for item in data:
-            data_entry = {
-                'timestamp': item.timestamp,
-                'temperature': item.temperature,
-                'tds': item.tds,
-                'turbidity': item.turbidity,
-               # 'ph': item.ph
-            }
-            data_list.append(data_entry)
+        data_list = [{'timestamp': item.timestamp, 'temperature': item.temperature, 'tds': item.tds, 'turbidity': item.turbidity} for item in data]
         return jsonify(data_list), 200
     except Exception as e:
         return str(e), 400
 
-
 @app.route('/export_csv', methods=['GET'])
 def export_csv():
-    # Query the database to fetch data from the SensorData table
-    data = SensorData.query.all()
+    try:
+        data = SensorData.query.all()
+        if not data:
+            return 'No data to export', 404
 
-    if not data:
-        return 'No data to export', 404
+        df = pd.DataFrame([{'timestamp': entry.timestamp, 'temperature': entry.temperature, 'tds': entry.tds, 'turbidity': entry.turbidity} for entry in data])
+        csv_data = df.to_csv(index=False)
 
-    # Create a DataFrame from the data
-    data_dict = [{'timestamp': entry.timestamp, 'temperature': entry.temperature, 'tds': entry.tds, 'turbidity': entry.turbidity} for entry in data]
-    df = pd.DataFrame(data_dict)
+        response = Response(csv_data, content_type='text/csv')
+        response.headers["Content-Disposition"] = "attachment; filename=data.csv"
+        return response
+    except Exception as e:
+        return str(e), 400
+    
+@app.route('/view-images')
+def view_images():
+    # Absolute path to the data folder where PNGs are stored
+    data_folder = os.path.abspath('WQMS/data')
 
-    # Convert the DataFrame to CSV
-    csv_data = df.to_csv(index=False)
+    # Get list of all PNG files in the data folder
+    try:
+        images = [f for f in os.listdir(data_folder) if f.endswith('.png')]
+        if not images:
+            return render_template('view_images.html', images=[])
+    except Exception as e:
+        return render_template('view_images.html', images=[], error=f"Error accessing data folder: {str(e)}")
 
-    # Create a Response object and set the content type to CSV
-    response = Response(csv_data, content_type='text/csv')
-    response.headers["Content-Disposition"] = "attachment; filename=data.csv"
+    # Render the image list on a webpage
+    return render_template('view_images.html', images=images)
 
-    return response
+@app.route('/images/<filename>')
+def serve_image(filename):
+    data_folder = os.path.abspath('WQMS/data')
+    file_path = os.path.join(data_folder, filename)
 
+    # Debug: print to verify file path and existence
+    print(f"Looking for image at: {file_path}")
 
+    # Check if the file exists
+    if not os.path.exists(file_path) or not filename.endswith('.png'):
+        return jsonify({'message': f'Image {filename} could not be found.'}), 404
 
-
-
-
+    print("Image found, serving it now...")
+    
+    try:
+        # Serve the requested PNG image
+        return send_from_directory(data_folder, filename)
+    except Exception as e:
+        print(f"Error serving image: {str(e)}")
+        return jsonify({'message': f'Error serving image: {str(e)}'}), 500
