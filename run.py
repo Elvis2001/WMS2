@@ -15,7 +15,7 @@ load_dotenv()
 
 def scheduled_task():
     try:
-        response = requests.get('https://wqms-kwv1.onrender.com/run-model')
+        response = requests.get('https://wqms.onrender.com/run-model')
         print(response.json())
     except Exception as e:
         print(f"Failed to trigger script: {e}")
